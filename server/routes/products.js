@@ -4,26 +4,52 @@ const { authenticateToken, authorizeRoles } = require('../middleware/auth');
 
 const router = express.Router();
 
-// 1. Lay danh sach san pham (Cong khai)
+// 1. API Danh sach san pham: Tim kiem + Loc danh muc + Phan trang phia Server
 router.get('/', async (req, res) => {
+  const trang = parseInt(req.query.page) || 1;
+  const soDong = parseInt(req.query.pageSize) || 10;
+  const tuKhoa = req.query.search || '';
+  const categoryId = req.query.categoryId || null;
+  const offset = (trang - 1) * soDong;
+
   try {
     const pool = await poolPromise;
-    const result = await pool.request().query(`
+    const request = pool
+      .request()
+      .input('tuKhoa', sql.NVarChar, `%${tuKhoa}%`)
+      .input('categoryId', sql.Int, categoryId)
+      .input('offset', sql.Int, offset)
+      .input('soDong', sql.Int, soDong);
+
+    const whereCategoryId = categoryId ? ' AND p.CategoryID = @categoryId' : '';
+
+    const result = await request.query(`
       SELECT p.ProductID, p.ProductName, p.UnitPrice, p.UnitsInStock,
-             p.Discontinued, p.CategoryID, c.CategoryName
+             p.Discontinued, c.CategoryName,
+             COUNT(*) OVER() AS TongSoDong
       FROM Products p 
       LEFT JOIN Categories c ON p.CategoryID = c.CategoryID
-      WHERE p.Discontinued = 0
+      WHERE p.Discontinued = 0 AND p.ProductName LIKE @tuKhoa ${whereCategoryId}
       ORDER BY p.ProductID DESC
+      OFFSET @offset ROWS FETCH NEXT @soDong ROWS ONLY
     `);
-    res.json(result.recordset);
+
+    const tongSoDong = result.recordset[0]?.TongSoDong || 0;
+
+    res.json({
+      data: result.recordset,
+      page: trang,
+      pageSize: soDong,
+      totalItems: tongSoDong,
+      totalPages: Math.ceil(tongSoDong / soDong) || 1,
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Loi lay danh sach san pham' });
   }
 });
 
-// 2. Lay chi tiet 1 san pham theo ID (Cong khai)
+// 2. Lay chi tiet 1 san pham theo ID
 router.get('/:id', async (req, res) => {
   try {
     const pool = await poolPromise;
@@ -42,7 +68,7 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// Ham kiem tra tinh hop le cua du lieu (Dung chung cho ca Them va Sua)
+// Ham kiem tra hop le du lieu
 function kiemTraDuLieu(body) {
   const { productName, unitPrice, unitsInStock } = body;
   if (!productName || productName.trim() === '') return 'Ten san pham khong duoc de trong';
@@ -106,7 +132,7 @@ router.put('/:id', authenticateToken, authorizeRoles('Admin', 'NhanVien'), async
   }
 });
 
-// 5. Xoa MEM: Chi Admin (Cap nhat Discontinued = 1 de khong vi pham khoa ngoai)
+// 5. Xoa mem (Admin)
 router.delete('/:id', authenticateToken, authorizeRoles('Admin'), async (req, res) => {
   try {
     const pool = await poolPromise;
