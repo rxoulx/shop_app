@@ -12,23 +12,29 @@ function ProductList() {
   const coTheSua = auth && ['Admin', 'NhanVien'].includes(auth.user.role);
   const coTheXoa = auth && auth.user.role === 'Admin';
 
-  const handleXoa = async (id) => {
-    if (!window.confirm('Ban co chac muon ngung ban san pham nay?')) return;
-    try {
-      await axiosClient.delete(`/products/${id}`);
-      alert(`Da goi lenh xoa san pham ${id}`);
-    } catch (err) {
-      alert(err.response?.data?.message || 'Loi khi xoa san pham');
-    }
-  };
-
-  useEffect(() => {
+  const loadData = () => {
+    setDangTai(true);
     axiosClient
       .get('/products')
       .then((res) => setProducts(res.data))
       .catch((err) => setLoi(err.message))
       .finally(() => setDangTai(false));
+  };
+
+  useEffect(() => {
+    loadData();
   }, []);
+
+  const handleXoa = async (id) => {
+    if (!window.confirm('Ban co chac muon ngung ban san pham nay?')) return;
+    try {
+      await axiosClient.delete(`/products/${id}`);
+      // Cap nhat ngay tren state de giao dien bien mat san pham ma khong can F5
+      setProducts(products.filter((sp) => sp.ProductID !== id));
+    } catch (err) {
+      alert(err.response?.data?.message || 'Loi khi xoa san pham');
+    }
+  };
 
   if (dangTai) return <p>Dang tai danh sach san pham...</p>;
   if (loi) return <p style={{ color: 'red' }}>Loi: {loi}</p>;
@@ -37,14 +43,25 @@ function ProductList() {
     <div>
       {coTheSua && (
         <div style={{ marginBottom: 16 }}>
-          <button onClick={() => alert('Chuc nang them se hoan thien o Lab 9')}>
+          <Link
+            to="/admin/products/new"
+            style={{
+              display: 'inline-block',
+              padding: '8px 16px',
+              backgroundColor: '#007bff',
+              color: 'white',
+              textDecoration: 'none',
+              borderRadius: 4,
+            }}
+          >
             + Them san pham moi
-          </button>
+          </Link>
         </div>
       )}
+
       <table border="1" cellPadding="8" style={{ borderCollapse: 'collapse', width: '100%' }}>
         <thead>
-          <tr>
+          <tr style={{ backgroundColor: '#f2f2f2' }}>
             <th>ID</th>
             <th>Ten san pham</th>
             <th>Danh muc</th>
@@ -63,11 +80,17 @@ function ProductList() {
               <td>{sp.UnitsInStock}</td>
               {coTheSua && (
                 <td>
-                  <button onClick={() => alert(`Sua san pham ${sp.ProductID} (Lab 9)`)} style={{ marginRight: 6 }}>
+                  <Link
+                    to={`/admin/products/${sp.ProductID}/edit`}
+                    style={{ marginRight: 12, textDecoration: 'none', color: '#007bff' }}
+                  >
                     Sua
-                  </button>
+                  </Link>
                   {coTheXoa && (
-                    <button onClick={() => handleXoa(sp.ProductID)} style={{ color: 'red' }}>
+                    <button
+                      onClick={() => handleXoa(sp.ProductID)}
+                      style={{ color: 'red', border: '1px solid red', background: 'none', padding: '2px 8px', borderRadius: 4, cursor: 'pointer' }}
+                    >
                       Xoa
                     </button>
                   )}
