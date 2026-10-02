@@ -1,0 +1,7 @@
+Bước 1: Khởi động CSDL SQL Server (Docker)Mở một Terminal và chạy lệnh bật container CSDL:   Bashcd /workspaces/shop_app
+docker compose up -d
+(Kiểm tra trạng thái bằng docker ps, nếu thấy shop_sqlserver ở trạng thái Up là CSDL đã chạy).   Bước 2: Khởi động Backend (Cổng 4000)Mở Terminal 1 và chạy lệnh bật server Node.js:   Bashcd /workspaces/shop_app/server
+npm run dev
+(Giữ nguyên Terminal này, đợi terminal in ra: Server dang chay tai cong 4000 và Da ket noi SQL Server thanh cong).   Bước 3: Khởi động Frontend (Cổng 5173)Bấm dấu + ở góc trên thanh Terminal để mở thêm Terminal 2, sau đó chạy:   Bashcd /workspaces/shop_app/client
+npm run dev
+(Giữ nguyên Terminal này để Vite phục vụ giao diện React).   
